@@ -1,0 +1,46 @@
+$Array = @()
+$computername = (Get-ComputerInfo).CsName
+$measurecmd = (measure-command { 1..1000 | % {random} | sort }).Seconds
+$datetime = Get-Date
+$LogTime = Get-Date -Format "MM-dd-yyyy_hh-mm-ss"
+$LogFile = 'C:\FinalReport'+$LogTime+".log"
+
+ 
+ $timer = [Diagnostics.Stopwatch]::StartNew()
+ while ($timer.Elapsed.TotalSeconds -lt 1800) {
+    Try {
+    
+ 
+        $Processor = (Get-WmiObject -ComputerName $computername -Class win32_processor -ErrorAction Stop | Measure-Object -Property LoadPercentage -Average | Select-Object Average).Average
+ 
+ 
+        $ComputerMemory = Get-WmiObject -ComputerName $computername -Class win32_operatingsystem -ErrorAction Stop
+        $Memory = ((($ComputerMemory.TotalVisibleMemorySize - $ComputerMemory.FreePhysicalMemory)*100)/ $ComputerMemory.TotalVisibleMemorySize)
+        $RoundMemory = [math]::Round($Memory, 2)
+         
+ 
+        $Object = New-Object PSCustomObject
+        $Object | Add-Member -MemberType NoteProperty -Name "Computer name" -Value $computername
+        $datetime = Get-Date
+        $Object | Add-Member -MemberType NoteProperty -Name "Date Time" -Value $datetime
+        $Object | Add-Member -MemberType NoteProperty -Name "CPU %" -Value $Processor
+        $Object | Add-Member -MemberType NoteProperty -Name "Memory %" -Value $RoundMemory
+        $Object | Add-Member -MemberType NoteProperty -Name "Meaure CPU speed" -Value (measure-command { 1..1000 | % {random} | sort }).Seconds
+         
+        $Object
+        $Array += $Object
+    }
+    
+    Catch {
+        Write-Host "Something went wrong ($computername): "$_.Exception.Message
+        Continue
+    }
+    
+
+If ($Array) { 
+    $Array | Out-File $LogFile -Force
+            }
+
+    
+Start-Sleep -Seconds 60
+} 
